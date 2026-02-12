@@ -1,0 +1,28 @@
+[gd_scene load_steps=3 format=3 uid="uid://462phsx2qpri"]
+
+[ext_resource type="Script" uid="uid://bb35tj4bllpxb" path="res://Scripts/Control Areas/GateArea.cs" id="1_umomd"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_0h7mo"]
+radius = 80.0
+
+[node name="GateArea" type="Area2D" node_paths=PackedStringArray("label")]
+collision_layer = 0
+collision_mask = 6
+script = ExtResource("1_umomd")
+label = NodePath("Label")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_0h7mo")
+
+[node name="Label" type="Label" parent="."]
+offset_left = -20.0
+offset_top = -13.0
+offset_right = 20.0
+offset_bottom = 10.0
+
+[node name="DamageTimer" type="Timer" parent="."]
+autostart = true
+
+[connection signal="body_entered" from="." to="." method="OnBodyEntered"]
+[connection signal="body_exited" from="." to="." method="OnBodyExited"]
+[connection signal="timeout" from="DamageTimer" to="." method="OnDamageTimerTimeout"]
