@@ -1,0 +1,9 @@
+# Godot 4+ specific ignores
+.godot/
+addons/
+assets/
+SaveFile/
+*.png
+*.import
+*.svg
+*.tres
