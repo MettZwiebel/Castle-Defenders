@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://uu4j0flskush"]
+
+[ext_resource type="Script" uid="uid://rhb1vhpkjsdr" path="res://Scripts/UI/BuildBar.cs" id="1_fdfuy"]
+[ext_resource type="PackedScene" uid="uid://btx62wvtjev2x" path="res://Scenes/UI/Elements/ExpandingButtons.tscn" id="2_nfmxy"]
+
+[node name="BuildBar" type="Node2D"]
+script = ExtResource("1_fdfuy")
+
+[node name="ExpandingButtons" parent="." instance=ExtResource("2_nfmxy")]
+Items = Array[Dictionary]([{
+"icon": "res://assets/UI Stock/3 Icons/Icon with back/Icon_01.png"
+}])
+DisplayOffset = Vector2i(128, 128)

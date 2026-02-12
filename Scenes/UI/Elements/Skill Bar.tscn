@@ -1,0 +1,3 @@
+[gd_scene format=3 uid="uid://b32di23fla5ed"]
+
+[node name="SkillBar" type="Node2D"]

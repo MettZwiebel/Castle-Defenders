@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://btx62wvtjev2x"]
+
+[ext_resource type="Script" uid="uid://c3w04nuthsv24" path="res://Scripts/UI/Elements/ExpandingButtons.cs" id="1_qlyb1"]
+
+[node name="ExpandingButtons" type="Node2D"]
+script = ExtResource("1_qlyb1")
+Items = Array[Object]([])
+ButtonDimensions = Vector2i(22, 22)

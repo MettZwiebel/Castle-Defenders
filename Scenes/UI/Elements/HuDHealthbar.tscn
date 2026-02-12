@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://s8qg1rqrklw2"]
+
+[ext_resource type="Texture2D" uid="uid://bpjaiwefog0hg" path="res://assets/UI Stock 2/Textures/Action Bar/Fill Bars/ActionBar_Bar_Fill.png" id="1_dtrd5"]
+
+[node name="HuDHealthbar" type="TextureProgressBar"]
+offset_right = 710.0
+offset_bottom = 84.0
+value = 100.0
+texture_progress = ExtResource("1_dtrd5")

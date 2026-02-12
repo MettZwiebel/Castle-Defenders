@@ -1,0 +1,30 @@
+[gd_scene load_steps=6 format=3 uid="uid://72omi2es1opw"]
+
+[ext_resource type="Texture2D" uid="uid://cp68jcaq4to76" path="res://assets/UI Stock/1 Frames/Frame1.png" id="1_lxydc"]
+[ext_resource type="Script" uid="uid://cep4day112mq5" path="res://Scripts/UI/Elements/HuDButton.cs" id="1_nfqsk"]
+[ext_resource type="Script" uid="uid://yc4vknnfuu6h" path="res://assets/Resources/Buildable.cs" id="2_nfqsk"]
+[ext_resource type="Texture2D" uid="uid://dbcygccrwptt6" path="res://assets/UI Stock/3 Icons/Icon with back/Icon_01.png" id="4_byvt0"]
+
+[sub_resource type="Resource" id="Resource_byvt0"]
+script = ExtResource("2_nfqsk")
+metadata/_custom_type_script = "uid://yc4vknnfuu6h"
+
+[node name="HuDButton" type="Node2D" node_paths=PackedStringArray("button")]
+script = ExtResource("1_nfqsk")
+button = NodePath("Button")
+Item = SubResource("Resource_byvt0")
+
+[node name="Frame1" type="Sprite2D" parent="."]
+texture = ExtResource("1_lxydc")
+
+[node name="Button" type="Button" parent="."]
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+focus_mode = 0
+icon = ExtResource("4_byvt0")
+flat = true
+icon_alignment = 1
+expand_icon = true
+metadata/_edit_use_anchors_ = true
