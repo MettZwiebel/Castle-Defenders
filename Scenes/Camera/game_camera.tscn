@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://dhs5enmtx4pfo"]
+
+[ext_resource type="Script" uid="uid://cwtny1qhc3265" path="res://Scripts/Camera/GameCamera.cs" id="1_t64d6"]
+
+[node name="GameCamera" type="Camera2D" node_paths=PackedStringArray("UINode")]
+physics_interpolation_mode = 1
+script = ExtResource("1_t64d6")
+UINode = NodePath("")
