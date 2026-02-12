@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://58twahwx58p2"]
+
+[ext_resource type="Script" uid="uid://d5jammklk13e" path="res://Scripts/Enemy/EnemySpawner.cs" id="1_wovbr"]
+[ext_resource type="Texture2D" uid="uid://d8ds0dbrisb6" path="res://icon.svg" id="2_d8wsl"]
+
+[node name="EnemySpawner" type="Node2D" node_paths=PackedStringArray("DebugIcon")]
+script = ExtResource("1_wovbr")
+DebugIcon = NodePath("Sprite2D")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_d8wsl")
