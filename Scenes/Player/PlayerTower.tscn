@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://kqvj8gr5bitr"]
+
+[ext_resource type="Script" uid="uid://ct5oyq1dikstn" path="res://Scripts/Player/PlayerTower.cs" id="1_fytok"]
+
+[node name="PlayerTower" type="Node2D"]
+script = ExtResource("1_fytok")
