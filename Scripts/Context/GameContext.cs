@@ -15,7 +15,6 @@ public partial class GameContext : Node2D
     private ConstructionManager ConstructionManager;
     private ProfileStats ProfileStats;
     private BattleHandler BattleHandler;
-    private BuildHandler BuildHandler;
     [Export]
     public Node2D DisplayNode;
 
@@ -61,7 +60,7 @@ public partial class GameContext : Node2D
 
         BattleHandler.Connect(BattleHandler.SignalName.OnBattleEnded, Callable.From(OnBattleEnded));
 
-        BuildHandler = new BuildHandler();
+
 
 
 

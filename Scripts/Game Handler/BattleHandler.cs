@@ -5,7 +5,6 @@ using Godot.Collections;
 [GlobalClass]
 public partial class BattleHandler : Node
 {
-    private TowerHandler TowerHandler;
     private EnemyHandler EnemyHandler;
     private readonly FieldHandler FieldHandler;
 
@@ -19,10 +18,9 @@ public partial class BattleHandler : Node
 
     public override void _Ready()
     {
-        TowerHandler = new TowerHandler();
         EnemyHandler = new EnemyHandler(FieldHandler, 1024);
 
-        base.AddChild(TowerHandler);
+
         base.AddChild(EnemyHandler);
 
         EnemyHandler.OnBudgetSpent += OnBudgetSpent;
