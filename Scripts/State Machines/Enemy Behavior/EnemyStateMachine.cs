@@ -188,13 +188,24 @@ public static class EnemyLogic
                 break;
 
             case EnemyStateType.Hurt:
-                if (enemy.animCounter-- == 0)
+                enemy.Velocity = Vector2.Zero;
+                enemy.SafeVelocity = Vector2.Zero;
+
+                if (enemy.animCounter-- <= 0)
+                {
                     enemy.CurrentState = EnemyStateType.Idle;
+                }
                 break;
 
             case EnemyStateType.Death:
-                if (enemy.animCounter-- == 0)
-                    enemy.sprite.QueueFree();
+                enemy.Velocity = Vector2.Zero;
+                enemy.SafeVelocity = Vector2.Zero;
+
+                if (enemy.animCounter-- <= 0)
+                {
+                    enemy.pendingDead = true;
+                    PhysicsServer2D.BodySetCollisionLayer(enemy.PhysicsBody, 2);
+                }
                 break;
         }
     }

@@ -6,7 +6,7 @@ using Godot.Collections;
 public partial class BattleHandler : Node
 {
     //private EnemyHandler EnemyHandler;
-    private EnemyDirector director = new EnemyDirector();
+    public EnemyDirector director = new EnemyDirector();
 
     public BattleHandler(FieldHandler fieldHandler) : base()
     {
@@ -25,8 +25,8 @@ public partial class BattleHandler : Node
 
         //EnemyHandler.OnBudgetSpent += OnBudgetSpent;
 
-        director.EnemyMaximum = 2000;
-        director.Budget = 1000;
+        director.EnemyMaximum = 1000;
+        director.Budget = 10000;
         base.AddChild(director);
     }
 

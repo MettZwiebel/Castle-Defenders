@@ -20,9 +20,12 @@ public partial class EnemyDirector : Node2D
         "res://assets/Animations/Skeleton02.tres",
         "res://assets/Animations/Skeleton03.tres",
     };
-    private readonly Dictionary<Rid, int> PhysicsRidToEnemy = new Dictionary<Rid, int>();
-    private readonly Dictionary<Rid, int> AvoidanceRidToEnemy = new Dictionary<Rid, int>();
-
+    private Dictionary<Rid, int> PhysicsRidToEnemy = new Dictionary<Rid, int>();
+    private Dictionary<Rid, int> AvoidanceRidToEnemy = new Dictionary<Rid, int>();
+    public ref EnemyData GetEnemyFromRid(Rid rid)
+    {
+        return ref _enemies[PhysicsRidToEnemy[rid]];
+    }
     private bool isProcessing = false;
     private Rid NavigationMap = NavigationServer2D.MapCreate();
     private static SpriteFrames GetAnimation(string AnimationPath)
@@ -40,6 +43,11 @@ public partial class EnemyDirector : Node2D
         NavigationServer2D.MapSetCellSize(NavigationMap, 8f);
 
         base.YSortEnabled = true;
+    }
+
+    public void DamageEnemy(Rid rid, int Damage)
+    {
+        _enemies[PhysicsRidToEnemy[rid]].takeDamage(Damage);
     }
 
     public void StartProcessing()
@@ -60,20 +68,20 @@ public partial class EnemyDirector : Node2D
         for (int i = 0; i < EnemyMaximum; i++)
             _enemies[i] = new EnemyData();
     }
-
-    public void DamageEnemy(Rid PhysicsRid, int Damage)
-    {
-        var index = PhysicsRidToEnemy[PhysicsRid];
-        _enemies[index].takeDamage(Damage);
-    }
-
     public void Processing(float delta)
     {
         for (int i = 0; i < EnemyMaximum; i++)
         {
-            if (Budget > 0 && _enemies[i].isDead())
+            if (Budget > 0 && !_enemies[i].isAlive)
             {
                 ReviveEnemyAt(i);
+                Budget -= 1;
+            }
+            if (!_enemies[i].isAlive)
+                continue;
+            if (_enemies[i].pendingDead)
+            {
+                _enemies[i].Kill();
                 continue;
             }
 
@@ -86,7 +94,7 @@ public partial class EnemyDirector : Node2D
         }
     }
     private double Ticks = 0;
-    private double SecondsPerTick = 0.2f;
+    private double SecondsPerTick = 0.1f;
     public override void _PhysicsProcess(double delta)
     {
         if (!isProcessing)
@@ -110,6 +118,8 @@ public partial class EnemyDirector : Node2D
         float t = (float)Ticks / (float)SecondsPerTick;
         for (int i = 0; i < EnemyMaximum; i++)
         {
+            if (!_enemies[i].isAlive)
+                continue;
             ref var enemy = ref _enemies[i];
             var target = enemy.Position;
             // Linear Interpolation (Lerp)
@@ -168,15 +178,16 @@ public partial class EnemyDirector : Node2D
     private void ReviveEnemyAt(int index)
     {
         var spawnOffset = new Vector2(GD.Randf() * 512, GD.Randf() * 512);
-        _enemies[index].ReviveEnemy(SpawnPosition + spawnOffset, Vector2.Zero, 100, GetAnimation(anims.PickRandom()));
+        var pos = SpawnPosition + spawnOffset;
+        _enemies[index].ReviveEnemy(pos, Vector2.Zero, 100, GetAnimation(anims.PickRandom()));
         base.AddChild(_enemies[index].sprite);
-        _enemies[index].sprite.Position = SpawnPosition + spawnOffset;
+        _enemies[index].sprite.Position = pos;
 
-        var body = CreatePhysicsEnemy(SpawnPosition + spawnOffset, 8);
+        var body = CreatePhysicsEnemy(pos, 8);
         PhysicsRidToEnemy[body] = index;
         _enemies[index].PhysicsBody = body;
 
-        var agent = CreateAvoidanceEnemy(index, 3, SpawnPosition + spawnOffset);
+        var agent = CreateAvoidanceEnemy(index, 5, pos);
         _enemies[index].Agent = agent;
         AvoidanceRidToEnemy[agent] = index;
 
@@ -184,6 +195,7 @@ public partial class EnemyDirector : Node2D
     public Rid CreatePhysicsEnemy(Vector2 spawnPos, float radius)
     {
         Rid body = PhysicsServer2D.BodyCreate();
+
         PhysicsServer2D.BodySetMode(body, PhysicsServer2D.BodyMode.Kinematic);
         Rid shape = PhysicsServer2D.CircleShapeCreate();
 
@@ -215,6 +227,7 @@ public partial class EnemyDirector : Node2D
         NavigationServer2D.AgentSetTimeHorizonAgents(agent, 0.5f);
 
         uint rand = (uint)GD.RandRange(1, layerCount);
+        _enemies[index].layer = rand;
         NavigationServer2D.AgentSetAvoidanceLayers(agent, rand);
         NavigationServer2D.AgentSetAvoidanceMask(agent, rand);
         NavigationServer2D.AgentSetAvoidanceEnabled(agent, true);

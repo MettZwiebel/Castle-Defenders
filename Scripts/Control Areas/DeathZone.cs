@@ -1,48 +1,64 @@
+using System.Collections.Generic;
+using System.Linq;
 using Godot;
-using Godot.Collections;
 
 public partial class DeathZone : Area2D
 {
-    [Export]
-    public CollisionShape2D collider;
-    private readonly Array<EnemyBody> toDamage = new Array<EnemyBody>();
-    private readonly Array<int> toErase = new Array<int>();
+    private Rid _shapeRid;
+    private PhysicsShapeQueryParameters2D _query;
+    public EnemyDirector director;
 
-    public void OnBodyEntered(Node2D body)
+    private HashSet<Rid> toDamage = new HashSet<Rid>();
+    public override void _Ready()
     {
-        if (body is EnemyBody)
+        // 1. Get the RID of the first shape attached to this Area2D
+        var shapeOwner = GetShapeOwners()[0];
+        _shapeRid = ShapeOwnerGetShape((uint)shapeOwner, 0).GetRid();
+
+        // 2. Pre-configure the query to save CPU cycles
+        _query = new PhysicsShapeQueryParameters2D
         {
-            var enemy = (EnemyBody)body;
-            toDamage.Add(enemy);
-        }
+            ShapeRid = _shapeRid,
+            CollisionMask = 2, // Ensure this matches your Enemy Collision Layer
+            CollideWithAreas = false,
+            CollideWithBodies = true
+        };
     }
-    public void OnBodyExited(Node2D body)
+    public override void _PhysicsProcess(double delta)
     {
-        if (body is EnemyBody)
-        {
-            var enemy = (EnemyBody)body;
-            toDamage.Remove(enemy);
-        }
+        CheckCollisions();
     }
 
     public void OnTimeout()
     {
-        for (int i = 0; i < toDamage.Count; i++)
+        foreach (var rid in toDamage)
         {
-            if (toDamage[i] == null)
-            {
-                toErase.Add(i);
-                continue;
-            }
-            toDamage[i].takeDamage(1000);
-        }
-        if (toErase.Count > 0)
-        {
-            for (int i = toErase.Count - 1; i >= 0; i--)
-            {
-                toDamage.RemoveAt(toErase[i]);
-            }
-            toErase.Clear();
+            director.DamageEnemy(rid, 100);
         }
     }
+
+    private void CheckCollisions()
+    {
+        var spaceState = GetWorld2D().DirectSpaceState;
+
+        // Update the query transform to match the current node position/rotation
+        _query.Transform = GlobalTransform;
+
+        // 3. Query the server for all intersections
+        // We set a max of 32 or 64 to keep it performant
+        var results = spaceState.IntersectShape(_query, 1000);
+        toDamage.Clear();
+        if (results.Count > 0)
+        {
+
+            foreach (var result in results)
+            {
+                Rid victimRid = (Rid)result["rid"];
+                // Tell the director to handle the logic for this RID
+                if (!toDamage.Contains(victimRid))
+                    toDamage.Add(victimRid);
+            }
+        }
+    }
+
 }

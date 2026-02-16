@@ -21,6 +21,7 @@ public partial class GameContext : Node2D
 
     [Export]
     private bool Debug = false;
+    [Export] public DeathZone zone;
     private Node2D debugNode = new Node2D();
 
     private bool BattleInProgress = false;
@@ -52,7 +53,8 @@ public partial class GameContext : Node2D
         VectorCalc = new VectorFieldService(200, 200, MapHandler.GetScaledGates(new Vector2I(2, 2)), MapHandler.GetScaledWalls(new Vector2I(2, 2)), Debug);
 
         FieldHandler.UpdateVectorField(VectorCalc.Calculate(new Vector2I(99, 99)));
-
+        zone.director = BattleHandler.director;
+        
         if (Debug)
         {
             AddChild(debugNode);
