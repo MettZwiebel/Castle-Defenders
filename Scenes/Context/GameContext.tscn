@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ddpt3nct0t2lt" path="res://Scripts/Context/GameContext.cs" id="1_pxmf1"]
 [ext_resource type="PackedScene" uid="uid://dhs5enmtx4pfo" path="res://Scenes/Camera/game_camera.tscn" id="2_xw3lq"]
-[ext_resource type="SpriteFrames" uid="uid://cuss2mxgra0ma" path="res://assets/Animations/Skeleton01.tres" id="4_c6pxf"]
+[ext_resource type="SpriteFrames" uid="uid://bdytnisgodsyn" path="res://assets/Animations/Skeleton03.tres" id="4_c6pxf"]
 [ext_resource type="PackedScene" uid="uid://3bgsukmbs2o0" path="res://Scenes/Control Areas/death_zone.tscn" id="10_txwyi"]
 
 [node name="GameContext" type="Node2D" node_paths=PackedStringArray("DisplayNode")]
@@ -22,6 +22,4 @@ UINode = NodePath("..")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 visible = false
 sprite_frames = ExtResource("4_c6pxf")
-animation = &"_Run_Left"
-frame = 4
-frame_progress = 0.07575686
+animation = &"_Run_Up"

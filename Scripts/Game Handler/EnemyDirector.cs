@@ -13,17 +13,18 @@ public partial class EnemyDirector : Node2D
     public uint Budget = 100;
     public Vector2 SpawnPosition = new Vector2(512, 512);
     private EnemyData[] _enemies;
-    private Timer TickTimer = new Timer();
 
     private static readonly Dictionary<string, SpriteFrames> AnimationCache = new Dictionary<string, SpriteFrames>();
     private Array<string> anims = new Array<string>(){
-        "res://assets/Animations/Skeleton01.tres"
+        "res://assets/Animations/Skeleton01.tres",
+        "res://assets/Animations/Skeleton02.tres",
+        "res://assets/Animations/Skeleton03.tres",
     };
     private readonly Dictionary<Rid, int> PhysicsRidToEnemy = new Dictionary<Rid, int>();
     private readonly Dictionary<Rid, int> AvoidanceRidToEnemy = new Dictionary<Rid, int>();
 
     private bool isProcessing = false;
-
+    private Rid NavigationMap = NavigationServer2D.MapCreate();
     private static SpriteFrames GetAnimation(string AnimationPath)
     {
         if (!AnimationCache.ContainsKey(AnimationPath))
@@ -35,15 +36,10 @@ public partial class EnemyDirector : Node2D
 
     public override void _Ready()
     {
-        TickTimer.WaitTime = 0.05f;
-        TickTimer.Timeout += OnTimerTimeout;
+        NavigationServer2D.MapSetActive(NavigationMap, true);
+        NavigationServer2D.MapSetCellSize(NavigationMap, 8f);
 
-        base.AddChild(TickTimer);
-    }
-
-    public void OnTimerTimeout()
-    {
-
+        base.YSortEnabled = true;
     }
 
     public void StartProcessing()
@@ -70,6 +66,7 @@ public partial class EnemyDirector : Node2D
         var index = PhysicsRidToEnemy[PhysicsRid];
         _enemies[index].takeDamage(Damage);
     }
+
     public void Processing(float delta)
     {
         for (int i = 0; i < EnemyMaximum; i++)
@@ -83,26 +80,34 @@ public partial class EnemyDirector : Node2D
             EnemyLogic.HandleBasicEnemy(ref _enemies[i]);
 
             ApplyPhysics(ref _enemies[i], delta);
-            NavigationServer2D.AgentSetVelocity();
+
+            NavigationServer2D.AgentSetPosition(_enemies[i].Agent, _enemies[i].Position);
+            NavigationServer2D.AgentSetVelocity(_enemies[i].Agent, _enemies[i].Velocity);
         }
     }
     private double Ticks = 0;
+    private double SecondsPerTick = 0.2f;
     public override void _PhysicsProcess(double delta)
     {
+        if (!isProcessing)
+            return;
+
+
         Ticks += delta;
-        if (Ticks < 0.1f)
+        if (Ticks < SecondsPerTick)
             return;
         delta = Ticks;
-        Ticks -= 0.1f;
+        Ticks -= SecondsPerTick;
 
-        if (isProcessing)
-            Processing((float)delta);
+        Processing((float)delta);
     }
 
     public override void _Process(double delta)
     {
         // Calculate how far we are through the current tick (0.0 to 1.0)
-        float t = (float)Ticks / 0.1f;
+        if (!isProcessing)
+            return;
+        float t = (float)Ticks / (float)SecondsPerTick;
         for (int i = 0; i < EnemyMaximum; i++)
         {
             ref var enemy = ref _enemies[i];
@@ -112,6 +117,7 @@ public partial class EnemyDirector : Node2D
 
             // Apply to visual only
             enemy.sprite.Position = smoothedPos;
+
         }
     }
 
@@ -119,7 +125,10 @@ public partial class EnemyDirector : Node2D
     public void ApplyPhysics(ref EnemyData enemy, float delta)
     {
         enemy.LastPosition = enemy.Position;
-        Vector2 motion = enemy.Velocity * delta;
+        Vector2 motion = enemy.SafeVelocity * delta;
+        if (enemy.SafeVelocity == Vector2.Zero)
+            motion = enemy.Velocity * delta;
+
         Transform2D currentTransform = new Transform2D(0, enemy.Position);
 
         var params2d = new PhysicsTestMotionParameters2D();
@@ -167,7 +176,8 @@ public partial class EnemyDirector : Node2D
         PhysicsRidToEnemy[body] = index;
         _enemies[index].PhysicsBody = body;
 
-        var agent = CreateAvoidanceEnemy(index, 1, 1, SpawnPosition + spawnOffset);
+        var agent = CreateAvoidanceEnemy(index, 3, SpawnPosition + spawnOffset);
+        _enemies[index].Agent = agent;
         AvoidanceRidToEnemy[agent] = index;
 
     }
@@ -191,18 +201,23 @@ public partial class EnemyDirector : Node2D
         return body;
     }
 
-    public Rid CreateAvoidanceEnemy(int index, uint layer, uint mask, Vector2 spawnPos)
+    public Rid CreateAvoidanceEnemy(int index, uint layerCount, Vector2 spawnPos)
     {
         Rid agent = NavigationServer2D.AgentCreate();
+
         NavigationServer2D.AgentSetMap(agent, GetWorld2D().NavigationMap);
         NavigationServer2D.AgentSetPosition(agent, spawnPos);
 
-        NavigationServer2D.AgentSetRadius(agent, 16.0f);
-        NavigationServer2D.AgentSetNeighborDistance(agent, 100.0f);
-        NavigationServer2D.AgentSetMaxNeighbors(agent, 10);
+        NavigationServer2D.AgentSetRadius(agent, 5.0f);
+        NavigationServer2D.AgentSetNeighborDistance(agent, 50.0f);
+        NavigationServer2D.AgentSetMaxNeighbors(agent, 5);
+        NavigationServer2D.AgentSetMaxSpeed(agent, 100f);
+        NavigationServer2D.AgentSetTimeHorizonAgents(agent, 0.5f);
 
-        NavigationServer2D.AgentSetAvoidanceLayers(agent, layer);
-        NavigationServer2D.AgentSetAvoidanceMask(agent, mask);
+        uint rand = (uint)GD.RandRange(1, layerCount);
+        NavigationServer2D.AgentSetAvoidanceLayers(agent, rand);
+        NavigationServer2D.AgentSetAvoidanceMask(agent, rand);
+        NavigationServer2D.AgentSetAvoidanceEnabled(agent, true);
 
         var callback = Callable.From((Vector2 safeVelocity) => OnSafeVelocityComputed(index, safeVelocity));
         NavigationServer2D.AgentSetAvoidanceCallback(agent, callback);
@@ -211,6 +226,7 @@ public partial class EnemyDirector : Node2D
 
     public void OnSafeVelocityComputed(int i, Vector2 safeVelocity)
     {
-        _enemies[i].Velocity = safeVelocity;
+        _enemies[i].SafeVelocity = safeVelocity;
+
     }
 }

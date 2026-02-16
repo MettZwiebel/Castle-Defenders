@@ -25,7 +25,7 @@ public partial class BattleHandler : Node
 
         //EnemyHandler.OnBudgetSpent += OnBudgetSpent;
 
-        director.EnemyMaximum = 1000;
+        director.EnemyMaximum = 2000;
         director.Budget = 1000;
         base.AddChild(director);
     }
