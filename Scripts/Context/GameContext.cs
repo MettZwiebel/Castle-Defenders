@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using CastleDefender.Scripts.Enemy.BehaviorMachine;
 using CastleDefender.Scripts.World;
 using Godot;
 using Godot.Collections;
@@ -37,19 +38,20 @@ public partial class GameContext : Node2D
 
         ProfileStats = new ProfileStats();
         MapHandler = new MapHandler();
-        FieldHandler = new FieldHandler(200,200);
+        FieldHandler = new FieldHandler(200, 200);
+
         BattleHandler = new BattleHandler(FieldHandler);
 
         ConstructionManager = new ConstructionManager(MapHandler, ProfileStats, DisplayNode);
-        
+
         base.AddChild(MapHandler);
         base.AddChild(ConstructionManager);
 
         Load();
 
-        VectorCalc = new VectorFieldService(200,200, MapHandler.GetScaledGates(new Vector2I(2,2)), MapHandler.GetScaledWalls(new Vector2I(2,2)), Debug);
+        VectorCalc = new VectorFieldService(200, 200, MapHandler.GetScaledGates(new Vector2I(2, 2)), MapHandler.GetScaledWalls(new Vector2I(2, 2)), Debug);
 
-        FieldHandler.UpdateVectorField(VectorCalc.Calculate(new Vector2I(99,99)));
+        FieldHandler.UpdateVectorField(VectorCalc.Calculate(new Vector2I(99, 99)));
 
         if (Debug)
         {
@@ -61,9 +63,7 @@ public partial class GameContext : Node2D
         BattleHandler.Connect(BattleHandler.SignalName.OnBattleEnded, Callable.From(OnBattleEnded));
 
 
-
-
-
+        EnemyLogic.FieldHandler = FieldHandler;
         base.AddChild(BattleHandler);
         //Save();
     }
@@ -72,6 +72,7 @@ public partial class GameContext : Node2D
     {
         if (@event.IsActionPressed("Space"))
         {
+            EnemyLogic.FieldHandler = FieldHandler;
             StartBattle();
         }
         if (@event.IsActionPressed("Click"))

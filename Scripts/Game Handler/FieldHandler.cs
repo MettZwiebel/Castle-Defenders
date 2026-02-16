@@ -8,7 +8,7 @@ namespace CastleDefender.Scripts.World;
 
 public class FieldHandler
 {
-    private readonly Vector2I CellDimensions = new Vector2I(16,16);
+    private readonly Vector2I CellDimensions = new Vector2I(16, 16);
     private Vector2[,] VectorField;
     private EnemyBody?[,] EnemyField;
     private uint[,] DensityField;
@@ -26,12 +26,7 @@ public class FieldHandler
 
     public Vector2 GetDirectionAt(Vector2I coord)
     {
-        var vec = Vector2.Zero;
-        try
-        {
-            vec = VectorField[coord.X, coord.Y];
-        }
-        catch (IndexOutOfRangeException e) { GD.Print(coord); }
+        var vec = VectorField[coord.X, coord.Y];
         return vec;
     }
     public EnemyBody? GetEnemyAt(Vector2I coord)

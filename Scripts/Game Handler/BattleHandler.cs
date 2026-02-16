@@ -5,12 +5,12 @@ using Godot.Collections;
 [GlobalClass]
 public partial class BattleHandler : Node
 {
-    private EnemyHandler EnemyHandler;
-    private readonly FieldHandler FieldHandler;
+    //private EnemyHandler EnemyHandler;
+    private EnemyDirector director = new EnemyDirector();
 
     public BattleHandler(FieldHandler fieldHandler) : base()
     {
-        this.FieldHandler = fieldHandler;
+        
     }
 
     [Signal]
@@ -18,17 +18,22 @@ public partial class BattleHandler : Node
 
     public override void _Ready()
     {
-        EnemyHandler = new EnemyHandler(FieldHandler, 1024);
+        //EnemyHandler = new EnemyHandler(FieldHandler, 1024);
 
 
-        base.AddChild(EnemyHandler);
+        //base.AddChild(EnemyHandler);
 
-        EnemyHandler.OnBudgetSpent += OnBudgetSpent;
+        //EnemyHandler.OnBudgetSpent += OnBudgetSpent;
+
+        director.EnemyMaximum = 1000;
+        director.Budget = 1000;
+        base.AddChild(director);
     }
 
     public void StartBattle(uint day)
     {
-        EnemyHandler.StartBattle(5000);
+        //EnemyHandler.StartBattle(5000);
+        director.StartProcessing();
     }
 
     private void OnBudgetSpent()
