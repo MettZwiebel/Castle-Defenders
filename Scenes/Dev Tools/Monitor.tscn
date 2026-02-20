@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://basq3ska2ov4l"]
+
+[ext_resource type="Script" uid="uid://cxpst3g26ncan" path="res://Scripts/Dev Tools/Monitor.cs" id="1_cwsti"]
+
+[node name="Monitor" type="Label"]
+script = ExtResource("1_cwsti")
