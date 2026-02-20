@@ -6,7 +6,7 @@ using Godot;
 
 public class VectorFieldService
 {
-    private Vector2I MapToVectorsFactor = new Vector2I(2,2);
+    private Vector2I MapToVectorsFactor = new Vector2I(2, 2);
     private FieldCell[,] VectorField;
     public int Width { get; private set; }
     public int Height { get; private set; }
@@ -246,6 +246,11 @@ public class VectorFieldService
     public Node2D GetDebugTree()
     {
         return DebugTree;
+    }
+
+    public FieldCell[,] GetFieldCells()
+    {
+        return VectorField;
     }
 
     public bool isInBounds(Vector2I target)
