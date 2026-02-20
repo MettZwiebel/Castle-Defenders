@@ -5,12 +5,19 @@ using Godot.Collections;
 [GlobalClass]
 public partial class BattleHandler : Node
 {
-    //private EnemyHandler EnemyHandler;
-    public EnemyDirector director = new EnemyDirector();
+    public EnemyDirector director;
+    private FieldHandler fieldHandler;
+    private MapHandler mapHandler;
+    private SpatialEntityGrid entityGrid;
 
-    public BattleHandler(FieldHandler fieldHandler) : base()
+    private uint _maximum;
+    public uint EnemyMaximum { get => _maximum; set { _maximum = value; CreateEntityGrid(); } }
+    public BattleHandler(FieldHandler fieldHandler, MapHandler mapHandler) : base()
     {
-        
+        this.fieldHandler = fieldHandler;
+        this.mapHandler = mapHandler;
+        this.entityGrid = new SpatialEntityGrid(fieldHandler.FieldDimensions, 50);
+        this.director = new EnemyDirector(mapHandler, fieldHandler, entityGrid);
     }
 
     [Signal]
@@ -18,21 +25,23 @@ public partial class BattleHandler : Node
 
     public override void _Ready()
     {
-        //EnemyHandler = new EnemyHandler(FieldHandler, 1024);
-
-
-        //base.AddChild(EnemyHandler);
-
-        //EnemyHandler.OnBudgetSpent += OnBudgetSpent;
-
-        director.EnemyMaximum = 1000;
-        director.Budget = 10000;
         base.AddChild(director);
+
+        var tower = new Tower(new Vector2(1136, 1136), 512, 128, fieldHandler, director, entityGrid);
+        base.AddChild(tower);
+    }
+
+    private void CreateEntityGrid()
+    {
+        entityGrid.Resize(fieldHandler.FieldDimensions, EnemyMaximum);
     }
 
     public void StartBattle(uint day)
     {
-        //EnemyHandler.StartBattle(5000);
+        this.EnemyMaximum = 2500;
+        director.EnemyMaximum = 2500;
+        director.Budget = 1000000;
+
         director.StartProcessing();
     }
 

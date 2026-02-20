@@ -1,3 +1,5 @@
+/*
+
 using CastleDefender.Scripts.Enemy.BehaviorMachine;
 using CastleDefender.Scripts.World;
 using Godot;
@@ -156,3 +158,5 @@ public partial class EnemySpawner : Node2D
     };
 
 }
+
+*/

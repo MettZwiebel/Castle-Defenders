@@ -1,13 +1,14 @@
-using CastleDefender.Scripts.Enemy.BehaviorMachine;
+using CastleDefender.Scripts.Enemy;
 using Godot;
-
+using System;
+using System.Collections.Generic;
 
 public struct EnemyData
 {
     private static readonly float AnimationTicks = 10;
     public int Health = 100;
 
-    public Rid PhysicsBody, Agent;
+    public Rid PhysicsBody, PhysicsShape, Agent;
     private Vector2 _position;
     public Vector2 Position { get => _position; set { _position = value; } }
     public Vector2 Velocity, SafeVelocity, LastPosition, Target;
@@ -43,7 +44,8 @@ public struct EnemyData
 
     public void ReviveEnemy(Vector2 Position, Vector2 Velocity, float Speed, SpriteFrames frames)
     {
-        this.sprite = new AnimatedSprite2D();
+        this.Health = 100;
+
         this.Position = Position;
         this.LastPosition = this.Position;
         this.Velocity = Velocity;
@@ -53,23 +55,23 @@ public struct EnemyData
 
         this.isAlive = true;
         this.pendingDead = false;
+        this.sprite.Position = this.Position;
         this.sprite.SpriteFrames = frames;
+        this.sprite.Visible = true;
+        sprite.ProcessMode = Node.ProcessModeEnum.Inherit;
     }
 
     public void Kill()
     {
         isAlive = false;
         pendingDead = false;
-        PhysicsServer2D.BodySetSpace(PhysicsBody, new Rid());
-
-        NavigationServer2D.FreeRid(Agent);
-        PhysicsServer2D.FreeRid(PhysicsBody);
-        sprite.QueueFree();
+        sprite.Visible = false;
+        sprite.ProcessMode = Node.ProcessModeEnum.Disabled;
     }
 
     public void takeDamage(int damage)
     {
-        if (CurrentState == EnemyStateType.Hurt || CurrentState == EnemyStateType.Death)
+        if (CurrentState == EnemyStateType.Death)
             return;
         Health -= damage;
         if (Health <= 0)
@@ -78,4 +80,5 @@ public struct EnemyData
             CurrentState = EnemyStateType.Hurt;
         animCounter = AnimationTicks;
     }
+
 }

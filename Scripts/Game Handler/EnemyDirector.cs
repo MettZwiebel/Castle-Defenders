@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
-using CastleDefender.Scripts.Enemy.BehaviorMachine;
+using CastleDefender.Scripts.Enemy;
+using CastleDefender.Scripts.World;
 using Godot;
 using Godot.Collections;
 using Microsoft.VisualBasic;
@@ -8,6 +9,9 @@ using Microsoft.VisualBasic;
 
 public partial class EnemyDirector : Node2D
 {
+    private MapHandler mapHandler;
+    private FieldHandler fieldHandler;
+    private SpatialEntityGrid entityGrid;
     private uint _maximum;
     public uint EnemyMaximum { get => _maximum; set { _maximum = value; Instantiate(); } }
     public uint Budget = 100;
@@ -27,6 +31,12 @@ public partial class EnemyDirector : Node2D
         return ref _enemies[PhysicsRidToEnemy[rid]];
     }
     private bool isProcessing = false;
+    private double Ticks = 0;
+    private double SecondsPerTick = 0.1f;
+    private const int PhysicsGroupCount = 6;
+    private int PhysicsGroupSize = 0;
+    private int ActivePhysicsGroup = 0;
+
     private Rid NavigationMap = NavigationServer2D.MapCreate();
     private static SpriteFrames GetAnimation(string AnimationPath)
     {
@@ -37,6 +47,13 @@ public partial class EnemyDirector : Node2D
         return AnimationCache[AnimationPath];
     }
 
+    public EnemyDirector(MapHandler mapHandler, FieldHandler fieldHandler, SpatialEntityGrid entityGrid) : base()
+    {
+        this.mapHandler = mapHandler;
+        this.fieldHandler = fieldHandler;
+        this.entityGrid = entityGrid;
+    }
+
     public override void _Ready()
     {
         NavigationServer2D.MapSetActive(NavigationMap, true);
@@ -45,9 +62,19 @@ public partial class EnemyDirector : Node2D
         base.YSortEnabled = true;
     }
 
+    public EnemyData GetEnemyAt(int index)
+    {
+        return _enemies[index];
+    }
+
     public void DamageEnemy(Rid rid, int Damage)
     {
         _enemies[PhysicsRidToEnemy[rid]].takeDamage(Damage);
+    }
+
+    public void DamageEnemy(int index, int Damage)
+    {
+        _enemies[index].takeDamage(Damage);
     }
 
     public void StartProcessing()
@@ -60,6 +87,7 @@ public partial class EnemyDirector : Node2D
         isProcessing = false;
     }
 
+
     private void Instantiate()
     {
         _enemies = new EnemyData[EnemyMaximum];
@@ -67,39 +95,59 @@ public partial class EnemyDirector : Node2D
         AvoidanceRidToEnemy.Clear();
         for (int i = 0; i < EnemyMaximum; i++)
             _enemies[i] = new EnemyData();
+
+        PhysicsGroupSize = (int)(EnemyMaximum / PhysicsGroupCount);
+
+
     }
+    private ParallelOptions _parallelOptions = new ParallelOptions
+    {
+        MaxDegreeOfParallelism = Mathf.Max(1, System.Environment.ProcessorCount / 2)
+    };
     public void Processing(float delta)
     {
         for (int i = 0; i < EnemyMaximum; i++)
         {
             if (Budget > 0 && !_enemies[i].isAlive)
             {
-                ReviveEnemyAt(i);
+                ReviveEnemyAt((int)i);
                 Budget -= 1;
             }
-            if (!_enemies[i].isAlive)
-                continue;
             if (_enemies[i].pendingDead)
             {
                 _enemies[i].Kill();
+                var pos = fieldHandler.LocalToMap(_enemies[i].Position);
+                fieldHandler.ReduceDensityAt(pos);
+                entityGrid.RemoveFromCell(i, pos);
                 continue;
             }
+            if (!_enemies[i].isAlive)
+                continue;
+
+            HandleEnemyAnimation(i);
+            HandleEnemyCellTransition(i);
+        }
+        Parallel.For(0, EnemyMaximum, _parallelOptions, i =>
+        {
+            if (!_enemies[i].isAlive)
+                return;
 
             EnemyLogic.HandleBasicEnemy(ref _enemies[i]);
 
-            ApplyPhysics(ref _enemies[i], delta);
+            ApplyFieldPhysics(ref _enemies[i], delta);
 
             NavigationServer2D.AgentSetPosition(_enemies[i].Agent, _enemies[i].Position);
             NavigationServer2D.AgentSetVelocity(_enemies[i].Agent, _enemies[i].Velocity);
-        }
+        });
+
     }
-    private double Ticks = 0;
-    private double SecondsPerTick = 0.1f;
+
     public override void _PhysicsProcess(double delta)
     {
         if (!isProcessing)
             return;
-
+        UpdatePhysicsBatch();
+        ActivePhysicsGroup = (ActivePhysicsGroup + 1) % PhysicsGroupCount;
 
         Ticks += delta;
         if (Ticks < SecondsPerTick)
@@ -108,6 +156,21 @@ public partial class EnemyDirector : Node2D
         Ticks -= SecondsPerTick;
 
         Processing((float)delta);
+    }
+
+    public void UpdatePhysicsBatch()
+    {
+        var startIndex = PhysicsGroupSize * ActivePhysicsGroup;
+        var endIndex = PhysicsGroupSize * (ActivePhysicsGroup + 1);
+        if (ActivePhysicsGroup == PhysicsGroupCount - 1)
+            endIndex = (int)EnemyMaximum;
+        for (int i = startIndex; i < endIndex; i++)
+        {
+            if (!_enemies[i].isAlive)
+                continue;
+            PhysicsServer2D.BodySetState(_enemies[i].PhysicsBody, PhysicsServer2D.BodyState.Transform, new Transform2D(0, _enemies[i].Position));
+
+        }
     }
 
     public override void _Process(double delta)
@@ -131,46 +194,53 @@ public partial class EnemyDirector : Node2D
         }
     }
 
-
-    public void ApplyPhysics(ref EnemyData enemy, float delta)
+    public void ApplyFieldPhysics(ref EnemyData enemy, float delta)
     {
         enemy.LastPosition = enemy.Position;
+
+        // 1. Get the Field Data for current position
+        Vector2 fieldVector = fieldHandler.GetDirectionAt(enemy.Position);
+
+        // 2. STUCK CHECK: If we are already inside a wall
+        if (mapHandler.IsWallAt(enemy.Position))
+        {
+            // Use the wall's own vector to push the enemy out.
+            // We multiply by a 'Panic Factor' to ensure they eject quickly.
+            float ejectSpeed = 200.0f;
+            enemy.Position += fieldVector * ejectSpeed * delta;
+            return; // Exit early; getting out is the priority
+        }
+
+        // 3. NORMAL MOVEMENT: Calculate intended move
         Vector2 motion = enemy.SafeVelocity * delta;
         if (enemy.SafeVelocity == Vector2.Zero)
             motion = enemy.Velocity * delta;
 
-        Transform2D currentTransform = new Transform2D(0, enemy.Position);
+        Vector2 nextPos = enemy.Position + motion;
 
-        var params2d = new PhysicsTestMotionParameters2D();
-        params2d.From = currentTransform;
-        params2d.Motion = motion;
-        params2d.Margin = 0.08f;
-        params2d.RecoveryAsCollision = true; // Crucial for not getting stuck in walls
-
-        var result = new PhysicsTestMotionResult2D();
-
-        if (PhysicsServer2D.BodyTestMotion(enemy.PhysicsBody, params2d, result))
+        // 4. LOOK-AHEAD CHECK: Is the destination a wall?
+        if (!mapHandler.IsWallAt(nextPos))
         {
-            // 1. Move the distance that was actually safe to travel
-            enemy.Position += result.GetTravel();
-
-            // 2. Calculate the slide for the remaining motion
-            Vector2 remainder = result.GetRemainder();
-            Vector2 normal = result.GetCollisionNormal();
-            Vector2 slideMotion = remainder.Slide(normal);
-
-            // 3. Optional: Test the slide motion too (for double-wall corners)
-            // For 2,000 enemies, you might skip a second test and just apply slideMotion
-            enemy.Position += slideMotion;
+            enemy.Position = nextPos;
         }
         else
         {
-            // No collision, move the full intended distance
-            enemy.Position += motion;
+            // 5. SLIDING: If the destination is a wall, try to 'skim' it
+            // Check X and Y movement separately (The Sliding logic)
+            Vector2 xMove = enemy.Position + new Vector2(motion.X, 0);
+            if (!mapHandler.IsWallAt(xMove))
+            {
+                enemy.Position = xMove;
+            }
+            else
+            {
+                Vector2 yMove = enemy.Position + new Vector2(0, motion.Y);
+                if (!mapHandler.IsWallAt(yMove))
+                {
+                    enemy.Position = yMove;
+                }
+            }
         }
-
-        // Update the Server so the "Ghost" body stays in sync
-        PhysicsServer2D.BodySetState(enemy.PhysicsBody, PhysicsServer2D.BodyState.Transform, new Transform2D(0, enemy.Position));
     }
 
 
@@ -179,33 +249,47 @@ public partial class EnemyDirector : Node2D
     {
         var spawnOffset = new Vector2(GD.Randf() * 512, GD.Randf() * 512);
         var pos = SpawnPosition + spawnOffset;
-        _enemies[index].ReviveEnemy(pos, Vector2.Zero, 100, GetAnimation(anims.PickRandom()));
-        base.AddChild(_enemies[index].sprite);
-        _enemies[index].sprite.Position = pos;
+        _enemies[index].ReviveEnemy(pos, Vector2.Zero, GD.RandRange(75, 125), GetAnimation(anims.PickRandom()));
+        if (_enemies[index].PhysicsBody.Id == 0)
+            base.AddChild(_enemies[index].sprite);
 
-        var body = CreatePhysicsEnemy(pos, 8);
+
+        var body = CreatePhysicsEnemy(pos, 8, index);
         PhysicsRidToEnemy[body] = index;
-        _enemies[index].PhysicsBody = body;
 
-        var agent = CreateAvoidanceEnemy(index, 5, pos);
-        _enemies[index].Agent = agent;
+        var agent = CreateAvoidanceEnemy(index, 1, pos);
         AvoidanceRidToEnemy[agent] = index;
 
+        var cellPos = fieldHandler.LocalToMap(pos);
+        fieldHandler.IncreaseDensityAt(cellPos);
+        entityGrid.AddToCell(index, cellPos);
     }
-    public Rid CreatePhysicsEnemy(Vector2 spawnPos, float radius)
+    public Rid CreatePhysicsEnemy(Vector2 spawnPos, float radius, int index)
     {
-        Rid body = PhysicsServer2D.BodyCreate();
+        Rid body = new Rid();
+        if (_enemies[index].PhysicsBody.Id == 0)
+        {
+            body = PhysicsServer2D.BodyCreate();
+            PhysicsServer2D.BodySetMode(body, PhysicsServer2D.BodyMode.Kinematic);
+            Rid shape = PhysicsServer2D.CircleShapeCreate();
 
-        PhysicsServer2D.BodySetMode(body, PhysicsServer2D.BodyMode.Kinematic);
-        Rid shape = PhysicsServer2D.CircleShapeCreate();
+            PhysicsServer2D.ShapeSetData(shape, radius);
+            PhysicsServer2D.BodyAddShape(body, shape);
+            PhysicsServer2D.BodySetCollisionLayer(body, 2);
+            PhysicsServer2D.BodySetCollisionMask(body, 1);
 
-        PhysicsServer2D.ShapeSetData(shape, radius);
-        PhysicsServer2D.BodyAddShape(body, shape);
-        PhysicsServer2D.BodySetCollisionLayer(body, 2);
-        PhysicsServer2D.BodySetCollisionMask(body, 1);
+            Rid space = GetWorld2D().Space;
+            PhysicsServer2D.BodySetSpace(body, space);
+            _enemies[index].PhysicsBody = body;
+            _enemies[index].PhysicsShape = shape;
+        }
+        else
+        {
+            body = _enemies[index].PhysicsBody;
+            PhysicsServer2D.ShapeSetData(_enemies[index].PhysicsShape, radius);
+        }
 
-        Rid space = GetWorld2D().Space;
-        PhysicsServer2D.BodySetSpace(body, space);
+
 
         var transform = new Transform2D(0, spawnPos);
         PhysicsServer2D.BodySetState(body, PhysicsServer2D.BodyState.Transform, transform);
@@ -215,25 +299,35 @@ public partial class EnemyDirector : Node2D
 
     public Rid CreateAvoidanceEnemy(int index, uint layerCount, Vector2 spawnPos)
     {
-        Rid agent = NavigationServer2D.AgentCreate();
+        Rid agent = new Rid();
+        if (_enemies[index].Agent.Id == 0)
+        {
+            agent = NavigationServer2D.AgentCreate();
+            NavigationServer2D.AgentSetMap(agent, GetWorld2D().NavigationMap);
+            NavigationServer2D.AgentSetRadius(agent, 5.0f);
+            NavigationServer2D.AgentSetNeighborDistance(agent, 50.0f);
+            NavigationServer2D.AgentSetMaxNeighbors(agent, 5);
+            NavigationServer2D.AgentSetMaxSpeed(agent, 100f);
+            NavigationServer2D.AgentSetTimeHorizonAgents(agent, 0.5f);
 
-        NavigationServer2D.AgentSetMap(agent, GetWorld2D().NavigationMap);
+            uint rand = (uint)GD.RandRange(1, layerCount);
+            _enemies[index].layer = rand;
+            NavigationServer2D.AgentSetAvoidanceLayers(agent, rand);
+            NavigationServer2D.AgentSetAvoidanceMask(agent, rand);
+            NavigationServer2D.AgentSetAvoidanceEnabled(agent, true);
+
+            var callback = Callable.From((Vector2 safeVelocity) => OnSafeVelocityComputed(index, safeVelocity));
+            NavigationServer2D.AgentSetAvoidanceCallback(agent, callback);
+            _enemies[index].Agent = agent;
+        }
+        else
+        {
+            agent = _enemies[index].Agent;
+        }
+
+
+
         NavigationServer2D.AgentSetPosition(agent, spawnPos);
-
-        NavigationServer2D.AgentSetRadius(agent, 5.0f);
-        NavigationServer2D.AgentSetNeighborDistance(agent, 50.0f);
-        NavigationServer2D.AgentSetMaxNeighbors(agent, 5);
-        NavigationServer2D.AgentSetMaxSpeed(agent, 100f);
-        NavigationServer2D.AgentSetTimeHorizonAgents(agent, 0.5f);
-
-        uint rand = (uint)GD.RandRange(1, layerCount);
-        _enemies[index].layer = rand;
-        NavigationServer2D.AgentSetAvoidanceLayers(agent, rand);
-        NavigationServer2D.AgentSetAvoidanceMask(agent, rand);
-        NavigationServer2D.AgentSetAvoidanceEnabled(agent, true);
-
-        var callback = Callable.From((Vector2 safeVelocity) => OnSafeVelocityComputed(index, safeVelocity));
-        NavigationServer2D.AgentSetAvoidanceCallback(agent, callback);
         return agent;
     }
 
@@ -242,4 +336,48 @@ public partial class EnemyDirector : Node2D
         _enemies[i].SafeVelocity = safeVelocity;
 
     }
+
+    private void HandleEnemyCellTransition(int index)
+    {
+        var pos = fieldHandler.LocalToMap(_enemies[index].Position);
+        var lastPos = fieldHandler.LocalToMap(_enemies[index].LastPosition);
+        if (pos == lastPos)
+            return;
+        fieldHandler.HandleCellTransition(pos, lastPos);
+        entityGrid.MoveEntity(index, lastPos, pos);
+    }
+
+    private void HandleEnemyAnimation(int index)
+    {
+        var anim = GetAnimationPrefix(_enemies[index].CurrentState) + GetAnimationDirection(_enemies[index].Velocity);
+        if (anim != _enemies[index].sprite.Animation)
+        {
+            _enemies[index].sprite.Animation = anim;
+            _enemies[index].sprite.Play();
+        }
+    }
+    private static string GetAnimationDirection(Vector2 Direction)
+    {
+        if (Direction == Vector2.Zero)
+            return "_Down";
+        if (Math.Abs(Direction.X) > Math.Abs(Direction.Y))
+            return Direction.X > 0 ? "_Right" : "_Left";
+        else
+            return Direction.Y > 0 ? "_Down" : "_Up";
+    }
+
+    private static string GetAnimationPrefix(EnemyStateType state)
+    {
+        return AnimationPrefixes[state];
+    }
+
+    private static Dictionary<EnemyStateType, string> AnimationPrefixes = new Dictionary<EnemyStateType, string>()
+    {
+        {EnemyStateType.Idle,"_Idle"},
+        {EnemyStateType.Attack,"_Attack"},
+        {EnemyStateType.TargetRun,"_Run"},
+        {EnemyStateType.Run,"_Run"},
+        {EnemyStateType.Hurt,"_Hurt"},
+        {EnemyStateType.Death,"_Death"}
+    };
 }

@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using CastleDefender.Scripts.Enemy.BehaviorMachine;
+using CastleDefender.Scripts.Enemy;
 using CastleDefender.Scripts.World;
 using Godot;
 using Godot.Collections;
@@ -41,7 +41,7 @@ public partial class GameContext : Node2D
         MapHandler = new MapHandler();
         FieldHandler = new FieldHandler(200, 200);
 
-        BattleHandler = new BattleHandler(FieldHandler);
+        BattleHandler = new BattleHandler(FieldHandler, MapHandler);
 
         ConstructionManager = new ConstructionManager(MapHandler, ProfileStats, DisplayNode);
 
@@ -53,8 +53,9 @@ public partial class GameContext : Node2D
         VectorCalc = new VectorFieldService(200, 200, MapHandler.GetScaledGates(new Vector2I(2, 2)), MapHandler.GetScaledWalls(new Vector2I(2, 2)), Debug);
 
         FieldHandler.UpdateVectorField(VectorCalc.Calculate(new Vector2I(99, 99)));
+        FieldHandler.UpdateFieldCells(VectorCalc.GetFieldCells());
         zone.director = BattleHandler.director;
-        
+
         if (Debug)
         {
             AddChild(debugNode);
@@ -67,7 +68,6 @@ public partial class GameContext : Node2D
 
         EnemyLogic.FieldHandler = FieldHandler;
         base.AddChild(BattleHandler);
-        //Save();
     }
 
     public override async void _UnhandledInput(InputEvent @event)

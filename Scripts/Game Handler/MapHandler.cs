@@ -265,21 +265,8 @@ public partial class MapHandler : Node2D
         return new Vector2(vec.X * Walls.TileSet.TileSize.X, vec.Y * Walls.TileSet.TileSize.Y);
     }
 
-
-    /*
-        public void SetCell(int sid, int alt, Vector2I coords, Vector2I atlas)
-        {
-            switch (Master.TilesetMapping[sid])
-            {
-                case "gate":
-                    Gates.SetCell(coords, 0, atlas, alt);
-                    break;
-                case "wall":
-                    Walls.SetCell(coords, 0, atlas, alt);
-                    break;
-                case "ground":
-                    Ground.SetCell(coords, 0, atlas, alt);
-                    break;
-            }
-        }*/
+    public bool IsWallAt(Vector2 Position)
+    {
+        return Walls.GetCellSourceId(LocalToMap(Position)) != -1;
+    }
 }
