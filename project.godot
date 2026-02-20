@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="Castle Defender"
+run/main_scene="uid://lhs46vwkyy2f"
 config/features=PackedStringArray("4.5", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -64,3 +65,4 @@ RMB={
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

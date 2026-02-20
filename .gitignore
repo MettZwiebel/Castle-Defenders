@@ -3,6 +3,7 @@
 addons/
 assets/
 SaveFile/
+build/
 *.png
 *.import
 *.svg

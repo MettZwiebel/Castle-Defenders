@@ -5,4 +5,7 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>CastleDefender</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="assets/Resources/Master Tileset/MasterTileset.cs"/>
+</ItemGroup>
 </Project>
