@@ -23,15 +23,15 @@ public partial class GameCamera : Camera2D
                 isDragging = false;
             }
         }
-        if (@event.IsActionPressed("ZoomIn"))
-        {
-            base.Zoom /= 2;
-            UINode.Scale *= 2;
-        }
         if (@event.IsActionPressed("ZoomOut"))
         {
-            base.Zoom *= 2;
-            UINode.Scale /= 2;
+            base.Zoom *= (float)0.9;
+            UINode.Scale = new Vector2(1, 1) / base.Zoom;
+        }
+        if (@event.IsActionPressed("ZoomIn"))
+        {
+            base.Zoom *= (float)1.1;
+            UINode.Scale = new Vector2(1, 1) / base.Zoom;
         }
     }
 
