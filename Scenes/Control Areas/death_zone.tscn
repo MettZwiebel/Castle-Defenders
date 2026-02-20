@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" uid="uid://bbdxx0v7h3d3e" path="res://Scripts/Control Areas/DeathZone.cs" id="1_nrn4v"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_rj586"]
-size = Vector2(112, 112)
+[sub_resource type="CircleShape2D" id="CircleShape2D_nrn4v"]
+radius = 128.0
 
 [node name="DeathZone" type="Area2D"]
 collision_layer = 0
@@ -11,9 +11,10 @@ collision_mask = 6
 script = ExtResource("1_nrn4v")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_rj586")
+shape = SubResource("CircleShape2D_nrn4v")
 
 [node name="Timer" type="Timer" parent="."]
+wait_time = 0.1
 autostart = true
 
 [connection signal="body_entered" from="." to="." method="OnBodyEntered"]

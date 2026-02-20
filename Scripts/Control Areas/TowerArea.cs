@@ -1,7 +1,9 @@
+/*
+
 using Godot;
 using Godot.Collections;
 
-public partial class TowerArea : TargetArea
+public partial class TowerArea
 {
     public Label label = new Label();
     private readonly Dictionary<int, int[]> ConnectedQuadrants = new Dictionary<int, int[]>();
@@ -30,14 +32,14 @@ public partial class TowerArea : TargetArea
         WalloffsetMap[3] = q3;
     }
 
-    public override void _Ready()
+    public void _Ready()
     {
         QuadrantDistributer.InitializeTemplate(160f);
 
         PopulateConnectedQuadrants(new int[] { 0, 3 }, new int[] { 1 }, new int[] { 2, 3 }, new int[] { 3, 0, 2 });
         PopulateWallOffset(new Vector2(-16, 16), new Vector2(16, -16), new Vector2(-16, 16), new Vector2(-16, 16));
     }
-    public override void registerEnemy(EnemyBody body)
+    public void registerEnemy(EnemyBody body)
     {
         if (body.attackTarget != null)
             return;
@@ -45,7 +47,7 @@ public partial class TowerArea : TargetArea
         body.setTargetState(this, GetAttackPosition(body));
     }
 
-    public override void freeEnemy(EnemyBody body)
+    public void freeEnemy(EnemyBody body)
     {
         if (DamageMap.ContainsKey(body))
         {
@@ -54,7 +56,7 @@ public partial class TowerArea : TargetArea
             DamageMap.Remove(body);
         }
     }
-    public override void updateEnemy(EnemyBody body, bool isAttacking)
+    public void updateEnemy(EnemyBody body, bool isAttacking)
     {
         DamageCount += isAttacking ? DamageMap[body] : DamageMap[body] * -1;
     }
@@ -108,3 +110,5 @@ public partial class TowerArea : TargetArea
         return 3;
     }
 }
+
+*/
