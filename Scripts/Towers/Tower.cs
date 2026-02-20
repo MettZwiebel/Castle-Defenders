@@ -7,7 +7,6 @@ using System.Linq;
 
 public partial class Tower : Node2D
 {
-    private HashSet<Rid> enemies = new HashSet<Rid>();
     private Vector2I TargetPosition = Vector2I.MinValue;
     private Vector2 TargetVelocity;
     private Vector2I[] TargetCoordinates;
@@ -44,7 +43,7 @@ public partial class Tower : Node2D
 
 
         FireTimer = new Timer();
-        FireTimer.WaitTime = 0.1f;
+        FireTimer.WaitTime = 0.01f;
         FireTimer.Autostart = true;
         FireTimer.Timeout += FireWeapon;
         base.AddChild(FireTimer);
@@ -62,16 +61,14 @@ public partial class Tower : Node2D
         projectile.speed = 20;
         projectile.OnEnemyHit += OnEnemyHit;
         var targetPos = fieldHandler.MapToLocal(TargetPosition);
-        GD.Print("Shooting at: " + targetPos);
         projectile.Velocity = Position.DirectionTo(CalculateIntercept(projectile.speed, targetPos, TargetVelocity));
-        GD.Print("Velocity: " + projectile.Velocity);
         base.AddChild(projectile);
     }
 
     public void OnEnemyHit(Array<Rid> enemies)
     {
         foreach (var enemy in enemies)
-            director.DamageEnemy(enemy, 10);
+            director.DamageEnemy(enemy, 50);
     }
 
     public void FindTarget()
