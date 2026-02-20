@@ -1,21 +1,51 @@
+using Godot.Collections;
 using Godot;
+using System.Linq;
 
 
 public partial class Projectile : Area2D
 {
     [Export]
-    public float speed = 100;
+    public float speed;
     [Export]
     public int health = 50;
     public Vector2 Velocity = Vector2.Zero;
-    public float MaxTravelDistance = 1024;
+    public float MaxTravelDistance = 2048;
     private float distance = 0;
-    public void OnBodyEntered(Node body)
+
+    private Rid _shapeRid;
+    private PhysicsShapeQueryParameters2D _query;
+
+    [Signal] public delegate void OnEnemyHitEventHandler(Array<Rid> enemies);
+
+    public override void _Ready()
     {
-        if (body is EnemyBody)
+        // 1. Get the RID of the first shape attached to this Area2D
+        var shapeOwner = GetShapeOwners()[0];
+        _shapeRid = ShapeOwnerGetShape((uint)shapeOwner, 0).GetRid();
+
+        // 2. Pre-configure the query to save CPU cycles
+        _query = new PhysicsShapeQueryParameters2D
         {
-            var enemy = (EnemyBody)body;
-            enemy.takeDamage(health);
+            ShapeRid = _shapeRid,
+            CollisionMask = 2, // Ensure this matches your Enemy Collision Layer
+            CollideWithAreas = false,
+            CollideWithBodies = true
+        };
+
+    }
+
+    private void CheckCollisions()
+    {
+        var spaceState = GetWorld2D().DirectSpaceState;
+
+        // Update the query transform to match the current node position/rotation
+        _query.Transform = GlobalTransform;
+
+        var results = spaceState.IntersectShape(_query, 16).Select(result => (Rid)result["rid"]).ToArray();
+        if (results.Length > 0)
+        {
+            EmitSignal(SignalName.OnEnemyHit, results);
             this.QueueFree();
         }
 
@@ -28,6 +58,7 @@ public partial class Projectile : Area2D
         if (distance >= MaxTravelDistance)
             QueueFree();
         base.Position += Velocity * speed;
+        CheckCollisions();
     }
 
 }
