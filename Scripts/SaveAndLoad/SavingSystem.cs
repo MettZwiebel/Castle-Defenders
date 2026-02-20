@@ -4,7 +4,7 @@ using Godot.Collections;
 
 public class SavingSystem
 {
-    public static string DefaultSaveLocation { get; private set; } = "C:/Users/Robin/Documents/godot-projects/Castle Defender/SaveFile/";
+    public static string DefaultSaveLocation { get; private set; } = "C:/Saves/";
     private static readonly Dictionary<string, Variant> SavefileCache = new Dictionary<string, Variant>();
     public static void Save(string path, Dictionary<string, Variant> dict)
     {
