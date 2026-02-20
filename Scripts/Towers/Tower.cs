@@ -1,60 +1,119 @@
 using CastleDefender.Scripts.World;
 using Godot;
+using Godot.Collections;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 public partial class Tower : Node2D
 {
+    private HashSet<Rid> enemies = new HashSet<Rid>();
+    private Vector2I TargetPosition = Vector2I.MinValue;
+    private Vector2 TargetVelocity;
+    private Vector2I[] TargetCoordinates;
 
-    [Export]
-    public TargetingArea Area;
-    [Export]
-    public float TargetAreaSize = 512;
-    private PackedScene projectileScene = GD.Load<PackedScene>("res://Scenes/Player/Projectile.tscn");
-    private Vector2I? Target;
-    private FieldHandler FieldHandler;
 
-    public override void _Ready()
+    private FieldHandler fieldHandler;
+    private EnemyDirector director;
+    private SpatialEntityGrid entityGrid;
+
+    public Area2D AttackArea { get; private set; }
+    private PhysicsShapeQueryParameters2D _query;
+
+    private Timer TargetTimer, FireTimer;
+
+    private PackedScene ProjectileScene = GD.Load<PackedScene>("res://Scenes/Player/Projectile.tscn");
+
+    public Tower(Vector2 Position, float TargetRadius, float AttackRadius, FieldHandler fieldHandler, EnemyDirector director, SpatialEntityGrid entityGrid)
     {
-        Area.parent = this;
-        Area.Prepare(32f, TargetAreaSize);
+        this.Position = Position;
+        this.fieldHandler = fieldHandler;
+        this.entityGrid = entityGrid;
+        this.director = director;
+        ZIndex = 50;
+        TargetCoordinates = FindTargetCoordinates(TargetRadius);
+        BuildArea(AttackRadius);
+
+        //base.AddChild(AttackArea);
+
+        TargetTimer = new Timer();
+        TargetTimer.WaitTime = 0.5f;
+        TargetTimer.Autostart = true;
+        TargetTimer.Timeout += FindTarget;
+        base.AddChild(TargetTimer);
+
+
+        FireTimer = new Timer();
+        FireTimer.WaitTime = 0.1f;
+        FireTimer.Autostart = true;
+        FireTimer.Timeout += FireWeapon;
+        base.AddChild(FireTimer);
+
+        GD.Print(Position);
     }
 
-    public void OnTargetTimerTimeout()
+    public void FireWeapon()
     {
-        Target = Area.GetAttackTarget();
-    }
-    public void OnShootingTimerTimeout()
-    {
-        ShootAtTarget();
-    }
-
-    public void ShootAtTarget()
-    {
-        if (Target == null)
-        {
+        if (TargetPosition == Vector2I.MinValue)
             return;
-        }
-        var vector = (Vector2I)Target;
-        var enemy = FieldHandler.GetEnemyAt(vector);
-        var projectile = (Projectile)projectileScene.Instantiate();
-        projectile.speed = 50;
-        var dir = Vector2.Zero;
-        if (IsInstanceValid(enemy))
-        {
-            var pos = CalculateIntercept(Position, projectile.speed, enemy.Position, enemy.Velocity);
-            dir = Position.DirectionTo(pos);
-        }
-        else
-        {
-            dir = Position.DirectionTo(FieldHandler.MapToLocal((Vector2I)Target));
-        }
-        projectile.Velocity = dir;
+
+        var projectile = ProjectileScene.Instantiate<Projectile>();
+        projectile.ZIndex = 10;
+        projectile.speed = 20;
+        projectile.OnEnemyHit += OnEnemyHit;
+        var targetPos = fieldHandler.MapToLocal(TargetPosition);
+        GD.Print("Shooting at: " + targetPos);
+        projectile.Velocity = Position.DirectionTo(CalculateIntercept(projectile.speed, targetPos, TargetVelocity));
+        GD.Print("Velocity: " + projectile.Velocity);
         base.AddChild(projectile);
     }
 
-    private Vector2 CalculateIntercept(Vector2 towerPos, float projectileSpeed, Vector2 enemyPos, Vector2 enemyVelocity)
+    public void OnEnemyHit(Array<Rid> enemies)
+    {
+        foreach (var enemy in enemies)
+            director.DamageEnemy(enemy, 10);
+    }
+
+    public void FindTarget()
+    {
+        foreach (var coord in TargetCoordinates)
+            if (fieldHandler.GetDensityAt(coord) > 0)
+            {
+                TargetPosition = coord;
+                var index = entityGrid.GetFirstInCell(coord);
+                if (index >= 0)
+                    TargetVelocity = director.GetEnemyAt(index).Velocity;
+                else
+                    TargetVelocity = Vector2.Zero;
+                return;
+            }
+        TargetPosition = Vector2I.MinValue;
+    }
+
+    private void BuildArea(float radius)
+    {
+        var shape = new CircleShape2D();
+        shape.Radius = radius;
+
+        var collision = new CollisionShape2D();
+        collision.Shape = shape;
+
+        Area2D AttackArea = new Area2D();
+        AttackArea.AddChild(collision);
+
+        _query = new PhysicsShapeQueryParameters2D
+        {
+            ShapeRid = shape.GetRid(),
+            CollisionMask = 2,
+            CollideWithAreas = false,
+            CollideWithBodies = true
+        };
+    }
+
+    private Vector2 CalculateIntercept(float projectileSpeed, Vector2 enemyPos, Vector2 enemyVelocity)
     {
         // The vector from the tower to the enemy
-        Vector2 relativePos = enemyPos - towerPos;
+        Vector2 relativePos = enemyPos - Position;
 
         // Coefficients for the quadratic equation: at^2 + bt + c = 0
         // a = (Vx^2 + Vy^2) - projectileSpeed^2
@@ -87,4 +146,34 @@ public partial class Tower : Node2D
         return enemyPos + (enemyVelocity * t);
     }
 
+    private Vector2I[] FindTargetCoordinates(float radius)
+    {
+        var cells = GetRelativeIntersectingCells(this.fieldHandler.CellDimensions.X, radius).Select(vec => fieldHandler.GetCellAt(vec + fieldHandler.LocalToMap(this.Position))).ToArray();
+        cells = cells.OrderBy(cell => cell.CalculatedWeight).ToArray();
+        var coords = new Array<Vector2I>();
+        foreach (var cell in cells)
+            coords.Add(cell.Position);
+        return coords.ToArray();
+    }
+    private static Array<Vector2I> GetRelativeIntersectingCells(float gridSize, float radius)
+    {
+        Array<Vector2I> result = new Array<Vector2I>();
+
+        float gridRadius = radius / gridSize;
+        float gridRadiusSquared = gridRadius * gridRadius;
+
+        for (int i = 0; i <= (int)gridRadius; i++)
+        {
+            int distance = (int)Math.Sqrt(gridRadiusSquared - (i * i));
+            for (int j = 0 - distance; j <= distance; j++)
+            {
+                result.Add(new Vector2I(j, i));
+                if (i > 0)
+                {
+                    result.Add(new Vector2I(j, -i));
+                }
+            }
+        }
+        return result;
+    }
 }
