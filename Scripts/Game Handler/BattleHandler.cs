@@ -27,8 +27,8 @@ public partial class BattleHandler : Node
     {
         base.AddChild(director);
 
-        var tower = new Tower(new Vector2(1136, 1136), 512, 128, fieldHandler, director, entityGrid);
-        base.AddChild(tower);
+        //var tower = new Tower(new Vector2(1136, 1136), 512, 128, fieldHandler, director, entityGrid);
+        //base.AddChild(tower);
     }
 
     private void CreateEntityGrid()
@@ -38,8 +38,8 @@ public partial class BattleHandler : Node
 
     public void StartBattle(uint day)
     {
-        this.EnemyMaximum = 2500;
-        director.EnemyMaximum = 2500;
+        this.EnemyMaximum = 5000;
+        director.EnemyMaximum = 5000;
         director.Budget = 1000000;
 
         director.StartProcessing();

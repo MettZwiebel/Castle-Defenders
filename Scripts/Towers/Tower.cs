@@ -43,7 +43,7 @@ public partial class Tower : Node2D
 
 
         FireTimer = new Timer();
-        FireTimer.WaitTime = 0.01f;
+        FireTimer.WaitTime = 0.1f;
         FireTimer.Autostart = true;
         FireTimer.Timeout += FireWeapon;
         base.AddChild(FireTimer);

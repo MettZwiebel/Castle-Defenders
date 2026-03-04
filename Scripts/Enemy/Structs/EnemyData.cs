@@ -8,18 +8,21 @@ public struct EnemyData
     private static readonly float AnimationTicks = 10;
     public int Health = 100;
 
-    public Rid PhysicsBody, PhysicsShape, Agent;
+    public Rid Agent;
     private Vector2 _position;
     public Vector2 Position { get => _position; set { _position = value; } }
     public Vector2 Velocity, SafeVelocity, LastPosition, Target;
     public float Speed = 100;
+    public float Radius = 8f;
     public uint layer;
     public EnemyStateType CurrentState;
     public bool isAlive, pendingDead;
     public AnimatedSprite2D sprite;
     public float animCounter;
 
-    public EnemyData()
+    public uint PhysicsGroup;
+
+    public EnemyData(uint PhysicsGroup)
     {
         this.sprite = new AnimatedSprite2D();
         this.Position = new Vector2(-1, -1);
@@ -28,8 +31,9 @@ public struct EnemyData
         this.SafeVelocity = new Vector2(0, 0);
         this.Speed = 0;
         this.CurrentState = EnemyStateType.Death;
+        this.PhysicsGroup = PhysicsGroup;
     }
-    public EnemyData(Vector2 Position, Vector2 Velocity, float Speed, SpriteFrames frames)
+    public EnemyData(Vector2 Position, Vector2 Velocity, float Speed, SpriteFrames frames, uint PhysicsGroup)
     {
         this.sprite = new AnimatedSprite2D();
         this.Position = Position;
@@ -38,6 +42,7 @@ public struct EnemyData
         this.SafeVelocity = new Vector2(0, 0);
         this.Speed = Speed;
         this.CurrentState = EnemyStateType.Idle;
+        this.PhysicsGroup = PhysicsGroup;
 
         this.sprite.SpriteFrames = frames;
     }

@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System;
 
 namespace CastleDefender.Scripts.Enemy;
+
 public static class EnemyLogic
 {
     public static FieldHandler FieldHandler;
@@ -23,7 +24,7 @@ public static class EnemyLogic
         var pos = FieldHandler.LocalToMap(enemy.Position);
         var vel = FieldHandler.GetDirectionAt(pos);
         return vel * enemy.Speed;
-    } 
+    }
 
     public static void HandleBasicEnemy(ref EnemyData enemy)
     {
@@ -65,7 +66,7 @@ public static class EnemyLogic
                     enemy.CurrentState = EnemyStateType.Attack;
                     break;
                 }
-
+                enemy.Velocity = GetTargetVelocity(enemy);
                 break;
 
             case EnemyStateType.Attack:
@@ -90,7 +91,6 @@ public static class EnemyLogic
                 if (enemy.animCounter-- <= 0)
                 {
                     enemy.pendingDead = true;
-                    PhysicsServer2D.BodySetCollisionLayer(enemy.PhysicsBody, 2);
                 }
                 break;
         }

@@ -4,52 +4,19 @@ using Godot;
 
 public partial class DeathZone : Area2D
 {
-    private Rid _shapeRid;
-    private PhysicsShapeQueryParameters2D _query;
     public EnemyDirector director;
-    private HashSet<Rid> toDamage = new HashSet<Rid>();
+    [Export] public float DamageRadius = 200f;  // Zone radius in world units
+    [Export] public int DamageAmount = 500;     // Damage per hit
+    
     public override void _Ready()
     {
-        // 1. Get the RID of the first shape attached to this Area2D
-        var shapeOwner = GetShapeOwners()[0];
-        _shapeRid = ShapeOwnerGetShape((uint)shapeOwner, 0).GetRid();
-
-        // 2. Pre-configure the query to save CPU cycles
-        _query = new PhysicsShapeQueryParameters2D
-        {
-            ShapeRid = _shapeRid,
-            CollisionMask = 2, // Ensure this matches your Enemy Collision Layer
-            CollideWithAreas = false,
-            CollideWithBodies = true
-        };
-        _query.Transform = GlobalTransform;
+        // No longer need physics shape querying since we use spatial grid
     }
 
     public void OnTimeout()
     {
-        CheckCollisions();
-        foreach (var rid in toDamage)
-        {
-            director.DamageEnemy(rid, 500);
-        }
+        // Damage all enemies within DamageRadius of this zone's center
+        director.DamageEnemiesInArea(GlobalPosition, DamageRadius, DamageAmount);
     }
-
-    private void CheckCollisions()
-    {
-        var spaceState = GetWorld2D().DirectSpaceState;
-
-        // Update the query transform to match the current node position/rotation
-
-
-        var results = spaceState.IntersectShape(_query, 1024);
-        toDamage.Clear();
-        foreach (var result in results)
-        {
-            Rid victimRid = (Rid)result["rid"];
-            if (!toDamage.Contains(victimRid))
-                toDamage.Add(victimRid);
-        }
-
-    }
-
 }
+
